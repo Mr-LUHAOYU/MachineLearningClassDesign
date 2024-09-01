@@ -4,7 +4,7 @@ import pandas as pd
 import datetime
 from math import floor, ceil
 
-pth = "data"
+pth = "../data/big-ideas-lab-glycemic-variability-and-wearable-device-data-1.1.0"
 start_time = datetime.datetime.strptime("00:00:00.000", '%H:%M:%S.%f')
 end_time = datetime.datetime.strptime("23:59:59.750", '%H:%M:%S.%f')
 
@@ -53,7 +53,7 @@ class DataGenerator(object):
 
     def gen(self):
         df_dict = self.read_data()
-        data = self.get_time_series()
+        data = self.get_time_series() 
         for info in ["ACC", "BVP", "HR"]:
             data = self.preprocess_1(df_dict[info], data, False)
         for info in ["EDA", "TEMP", "IBI"]:
@@ -62,5 +62,6 @@ class DataGenerator(object):
 
 
 if __name__ == '__main__':
-    dg = DataGenerator("001")
+    dg = DataGenerator(f"016")
     dg.gen()
+
