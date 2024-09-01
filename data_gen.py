@@ -62,5 +62,11 @@ class DataGenerator(object):
 
 
 if __name__ == '__main__':
-    dg = DataGenerator("001")
-    dg.gen()
+    for i in range(7, 10):
+        dg = DataGenerator(f"00{i}")
+        dg.gen()
+        print(i, "done")
+    for i in range(10, 12):
+        dg = DataGenerator(f"0{i}")
+        dg.gen()
+        print(i, "done")
