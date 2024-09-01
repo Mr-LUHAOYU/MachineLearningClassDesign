@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import datetime
 from math import floor, ceil
+from IPython.display import display
 
 pth = "data"
 start_time = datetime.datetime.strptime("00:00:00.000", '%H:%M:%S.%f')
@@ -20,6 +21,12 @@ class DataGenerator(object):
         for info in info_list:
             df = pd.read_csv(f"{pth}/{self.num}/{info}_{self.num}.csv")
             df_dict[info] = df
+        df = pd.read_csv(f"{pth}/{self.num}/Dexcom_{self.num}.csv")
+        df = df[['Timestamp (YYYY-MM-DDThh:mm:ss)', 'Glucose Value (mg/dL)']]
+        df.dropna(inplace=True)
+        df.columns = ['datetime', 'glucose']
+        df_dict['glucose'] = df
+        # display(df)
         return df_dict
 
     @staticmethod
@@ -27,7 +34,8 @@ class DataGenerator(object):
         data = pd.DataFrame(list(range(345600)), columns=['datetime'])
         return data
 
-    def preprocess(self, df: pd.DataFrame, ms: bool):
+    @staticmethod
+    def preprocess(df: pd.DataFrame, ms: bool):
         def lower_bound(time):
             t = time.split()[-1]
             if ms:
@@ -48,25 +56,26 @@ class DataGenerator(object):
             if col == "datetime":
                 continue
             data[col] = data[col].apply(lambda x: np.mean(x) if x else None)
-            data[col] = data[col].ffill()
+            # if col == "glucose":
+            data[col] = data[col].interpolate(method='linear')
+            # else:
+            #     data[col] = data[col].ffill()
         return data
 
     def gen(self):
         df_dict = self.read_data()
         data = self.get_time_series()
-        for info in ["ACC", "BVP", "HR"]:
-            data = self.preprocess_1(df_dict[info], data, False)
         for info in ["EDA", "TEMP", "IBI"]:
             data = self.preprocess_1(df_dict[info], data, True)
-        data.to_csv(f"{pth}/{self.num}/data.csv", index=False)
+            print(f"{info} data preprocessed successfully.")
+        for info in ["ACC", "BVP", "HR", "glucose"]:
+            data = self.preprocess_1(df_dict[info], data, False)
+            print(f"{info} data preprocessed successfully.")
+        data.to_csv(f"{pth}/merged_data/data_{self.num}.csv", index=False)
 
 
 if __name__ == '__main__':
-    for i in range(7, 10):
-        dg = DataGenerator(f"00{i}")
+    for i in range(1, 17):
+        dg = DataGenerator(f"{i:03}")
         dg.gen()
-        print(i, "done")
-    for i in range(10, 12):
-        dg = DataGenerator(f"0{i}")
-        dg.gen()
-        print(i, "done")
+        print(f"Data for patient {i} generated successfully.")

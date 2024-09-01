@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from IPython.core.interactiveshell import InteractiveShell
-InteractiveShell.ast_node_interactivity = 'all'
 
+InteractiveShell.ast_node_interactivity = 'all'
 
 path = "data/merged_data"
 
@@ -20,6 +20,11 @@ for i in range(1, 17):
         source_row = (row + 345600 - 1) % 345600
         df.loc[row, col] = df.loc[source_row, col]
     # normalize data
-    df = (df - df.min()) / (df.max() - df.min())
+    columns_to_normalize = df.columns.difference(['datetime', 'glucose'])
+    df[columns_to_normalize] = (
+            (df[columns_to_normalize] - df[columns_to_normalize].min())
+            /
+            (df[columns_to_normalize].max() - df[columns_to_normalize].min())
+    )
     df.head()
     df.to_csv(f"data/cleaned_data/data_{i:03}_filled.csv", index=False)
