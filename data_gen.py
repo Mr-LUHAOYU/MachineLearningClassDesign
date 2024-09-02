@@ -14,7 +14,7 @@ class DataGenerator(object):
     def __init__(self, num: str, ):
         self.num = num
 
-    def read_data(self):
+    def read_data(self) -> dict[str, pd.DataFrame|pd.Series]:
         df_dict = dict()
         info_list = ['ACC', "BVP", "EDA", "HR", "TEMP", "IBI"]
         # num = "001"
@@ -30,13 +30,13 @@ class DataGenerator(object):
         return df_dict
 
     @staticmethod
-    def get_time_series():
+    def get_time_series() -> pd.DataFrame | pd.Series:
         data = pd.DataFrame(list(range(345600)), columns=['datetime'])
         return data
 
     @staticmethod
-    def preprocess(df: pd.DataFrame, ms: bool):
-        def lower_bound(time):
+    def preprocess(df: pd.DataFrame, ms: bool) -> pd.DataFrame:
+        def upper_bound(time):
             t = time.split()[-1]
             if ms:
                 t = datetime.datetime.strptime(t, '%H:%M:%S.%f')
@@ -45,7 +45,7 @@ class DataGenerator(object):
             x = (t - start_time).total_seconds() * 4
             return ceil(x)
 
-        df['datetime'] = df['datetime'].apply(lambda x: lower_bound(x))
+        df['datetime'] = df['datetime'].apply(lambda x: upper_bound(x))
         df = df.groupby('datetime').mean().reset_index()
         return df
     
@@ -81,7 +81,7 @@ class DataGenerator(object):
             print(f"{info} data preprocessed successfully.")
         self.normalize(data)
         if write:
-            data.to_csv(f"{pth}/cleaned_data/data_{self.num}.csv", index=False)
+            data.to_csv(f"{pth}/cleaned_data/polynomial=2/data_{self.num}.csv", index=False)
         return data
     
     @staticmethod
@@ -94,13 +94,13 @@ class DataGenerator(object):
         )
 
 
-def draw_all():
+def draw_all(write: bool = False):
     fig, axs = plt.subplots(4, 4, figsize=(15, 15))
     
     for i in range(1, 17):
         num = f"{i:03}"
         data_gen = DataGenerator(num)
-        all_data = data_gen.gen()
+        all_data = data_gen.gen(write=write)
         glucose = all_data['glucose'][::1200]
         x = all_data['datetime'][::1200].apply(lambda x: x / 4 / 60 / 60)
         
@@ -115,9 +115,9 @@ def draw_all():
 
 
 def main():
-    # draw_all()
-    data_gen = DataGenerator("001")
-    data_gen.gen(True)
+    draw_all(write=True)
+    # data_gen = DataGenerator("001")
+    # data_gen.gen(True)
 
 
 if __name__ == "__main__":
