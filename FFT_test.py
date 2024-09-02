@@ -5,25 +5,25 @@ from scipy.signal import detrend
 from scipy.signal.windows import hann
 
 fig, axs = plt.subplots(4, 4, figsize=(15, 15))
-
+cur_col = ' eda'
 for i in range(1, 17):
     df = pd.read_csv(f'data/cleaned_data/data_{i:03}_filled.csv')
-
+    # print(df.columns)
     # 去除直流分量
-    glucose_centered = df['glucose'] - np.mean(df['glucose'])
+    col_centered = df[cur_col] - np.mean(df[cur_col])
 
     # 去趋势处理
-    glucose_detrended = detrend(glucose_centered)
+    col_detrended = detrend(col_centered)
 
     # 应用窗口函数
-    window = hann(len(glucose_detrended))
-    glucose_windowed = glucose_detrended * window
+    window = hann(len(col_detrended))
+    col_windowed = col_detrended * window
 
     # 执行傅里叶变换
-    fft_values = np.fft.fft(glucose_windowed)
+    fft_values = np.fft.fft(col_windowed)
 
     # 计算频率
-    n = len(glucose_windowed)
+    n = len(col_windowed)
     freq = np.fft.fftfreq(n, d=0.25)  # d 是时间步长
 
     # 计算幅值（取复数的模）

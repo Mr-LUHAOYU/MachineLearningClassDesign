@@ -14,7 +14,7 @@ class DataGenerator(object):
     def __init__(self, num: str, ):
         self.num = num
 
-    def read_data(self) -> dict[str, pd.DataFrame|pd.Series]:
+    def read_data(self) -> dict[str, pd.DataFrame | pd.Series]:
         df_dict = dict()
         info_list = ['ACC', "BVP", "EDA", "HR", "TEMP", "IBI"]
         # num = "001"
@@ -48,7 +48,7 @@ class DataGenerator(object):
         df['datetime'] = df['datetime'].apply(lambda x: upper_bound(x))
         df = df.groupby('datetime').mean().reset_index()
         return df
-    
+
     @staticmethod
     def interpolate(data: pd.Series):
         ddate = pd.concat([data, data], axis=0)
@@ -56,7 +56,7 @@ class DataGenerator(object):
         data1, data2 = ddate[:data.shape[0]], ddate[data.shape[0]:]
         data = data1.combine_first(data2)
         return data
-    
+
     def preprocess_1(self, df: pd.DataFrame, data: pd.DataFrame, ms: bool):
         df = self.preprocess(df, ms)
         data = pd.merge(data, df, on='datetime', how='left')
@@ -81,9 +81,9 @@ class DataGenerator(object):
             print(f"{info} data preprocessed successfully.")
         self.normalize(data)
         if write:
-            data.to_csv(f"{pth}/cleaned_data/polynomial=2/data_{self.num}.csv", index=False)
+            data.to_csv(f"{pth}/cleaned_data/data_{self.num}.csv", index=False)
         return data
-    
+
     @staticmethod
     def normalize(df: pd.DataFrame):
         columns_to_normalize = df.columns.difference(['datetime', 'glucose'])
@@ -96,30 +96,29 @@ class DataGenerator(object):
 
 def draw_all(write: bool = False):
     fig, axs = plt.subplots(4, 4, figsize=(15, 15))
-    
     for i in range(1, 17):
         num = f"{i:03}"
         data_gen = DataGenerator(num)
         all_data = data_gen.gen(write=write)
         glucose = all_data['glucose'][::1200]
         x = all_data['datetime'][::1200].apply(lambda x: x / 4 / 60 / 60)
-        
+
         row = (i - 1) // 4
         col = (i - 1) % 4
-        
+
         axs[row, col].plot(x, glucose)
         axs[row, col].set_title(f"Plot {i}")
-    
+
     plt.tight_layout()
     plt.show()
 
 
 def main():
-    draw_all(write=True)
-    # data_gen = DataGenerator("001")
-    # data_gen.gen(True)
+    # draw_all(write=True)
+    for i in range(1, 17):
+        data_gen = DataGenerator(f"{i:03}")
+        data_gen.gen(True)
 
 
 if __name__ == "__main__":
     main()
-    
