@@ -2,6 +2,6 @@
 __pycache__
 *.pyc
 /data/*
-!/data/extraction_data/
+!/data/extraction_data2/
 *.ipynb
 .idea
