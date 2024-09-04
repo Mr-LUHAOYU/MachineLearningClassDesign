@@ -5,6 +5,7 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+# 通过滑动窗口并构造生成函数, 将血糖值转换为先验概率
 def glucose_to_possible(df: pd.DataFrame | pd.Series, window_size: int, step_size: int) -> pd.Series:
 	if type(df) == pd.Series:
 		df = pd.DataFrame(df)
@@ -36,6 +37,7 @@ def glucose_to_possible(df: pd.DataFrame | pd.Series, window_size: int, step_siz
 	
 	return pd.Series(p[1::], name='glucose')
 
+# 提取所有特征并保存
 def save():
 	for i in range(1, 17):
 		df = pd.read_csv(f'data/cleaned_data/data_{i:03}.csv')
@@ -46,15 +48,14 @@ def save():
 		)
 		glucose.to_csv(f'data/extraction_data/data_{i:03}.csv', index=True)
 
+# 计算特征与属性的互信息
 def calculate_correlation(series1, series2):
 	mutual_info = mutual_info_score(series1.to_numpy(), series2.to_numpy())
 	print(f"互信息: {mutual_info}")
 
-cur_col = ['datetime', ' eda', ' temp', ' acc_x', ' acc_y', ' acc_z', ' hr'][6]
-
+# 滑动窗口提取新特征
 def sliding_window_transform(df: pd.DataFrame | pd.Series, window_size: int, step_size: int,
-		func: callable
-) -> pd.Series:
+                             func: callable) -> pd.Series:
 	if type(df) == pd.Series:
 		df = pd.DataFrame(df)
 	results = []
@@ -66,10 +67,12 @@ def sliding_window_transform(df: pd.DataFrame | pd.Series, window_size: int, ste
 	
 	return result_df
 
+cur_col = ['datetime', ' eda', ' temp', ' acc_x', ' acc_y', ' acc_z', ' hr'][6]
 names = ['mean', 'min', 'max', 'std', 'median', 'pk', 'kurt', ][6]
 feature_name = f"{cur_col}_{names}"
 print(f"current feature: {feature_name}")
 
+# 定义特征提取函数
 def feature_func(series: pd.Series) -> float | int:
 	match names:
 		case 'mean':
