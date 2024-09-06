@@ -137,7 +137,9 @@ def test(model: Model, i: int) -> pd.DataFrame:
     return model.predict(test_data)
 
 
-def evaluate(pred: pd.DataFrame, i: int, threshold: float = 0.7) -> tuple[int, int, int, int]:
+def evaluate(
+        pred: pd.DataFrame, i: int, threshold: float = 0.7
+) -> tuple[int, int, int, int, list[int], list[int]]:
     # threshold = pred['glucose'].quantile(threshold)
     test_data = pd.read_csv(f"data/{i:03}/Dexcom_{i:03}.csv")
     test_data = test_data[['Timestamp (YYYY-MM-DDThh:mm:ss)', 'Glucose Value (mg/dL)']]
@@ -155,6 +157,9 @@ def evaluate(pred: pd.DataFrame, i: int, threshold: float = 0.7) -> tuple[int, i
 
     test_data['time'] = test_data['time'].apply(transform_time)
     TP, FP, TN, FN = 0, 0, 0, 0
+    cnt_pred = [0]
+    cnt_true = [0]
+    last_time = 0
     for time, glucose in zip(test_data['time'], test_data['glucose']):
         bf1 = glucose > 140
         bf2 = pred[pred['time'] == time]['glucose'].values
@@ -171,61 +176,77 @@ def evaluate(pred: pd.DataFrame, i: int, threshold: float = 0.7) -> tuple[int, i
             FP += 1
         else:
             TN += 1
-    return TP, FP, TN, FN
+        if time < last_time:
+            cnt_pred.append(0)
+            cnt_true.append(0)
+        if bf1:
+            cnt_pred[-1] += 1
+        if bf2:
+            cnt_true[-1] += 1
+        last_time = time
+    return TP, FP, TN, FN, cnt_pred, cnt_true
+
+
+def train_model(model_name: str) -> Model:
+    seed = 607
+    train_list = list(range(1, 17, 2)) + [2, 4]
+    print(f"{model_name} trained on {train_list}")
+    model = train(
+        model_name=model_name, train_list=train_list, random_state=seed,
+
+        n_estimators=10, max_depth=3, learning_rate=0.1, n_jobs=-1,
+
+        input_size=24, hidden_size=64, output_size=1,
+        epochs=30, batch_size=30
+    )
+    return model
+
+
+def run_model(
+        model: Model, obj: int
+) -> tuple[float, float, float, float]:
+    threshold = 0.5
+    pred = test(model, obj)
+    TP, FP, TN, FN, cnt_pred, cnt_true = evaluate(pred, obj, threshold=threshold)
+    cnt_true = np.array(cnt_true)
+    cnt_pred = np.array(cnt_pred)
+    R2 = 1 - np.sum((cnt_true - cnt_pred) ** 2) / np.sum((cnt_true - cnt_true.mean()) ** 2)
+    RMSE = np.sqrt(np.mean((cnt_true - cnt_pred) ** 2))
+    return TP / (TP + FN), (TP + TN) / (TP + FP + TN + FN), R2, RMSE
+
+
+def calculate_metrics(model: Model, calculate_list: list[int]) -> None:
+    recalls, accuracys, R2s, RMSEs = [], [], [], []
+    for i in calculate_list:
+        recall, accuracy, R2, RMSE = run_model(model, i)
+        recalls.append(recall)
+        accuracys.append(accuracy)
+        R2s.append(R2)
+        RMSEs.append(RMSE)
+    recalls.append(np.mean(recalls))
+    accuracys.append(np.mean(accuracys))
+    R2s.append(np.mean(R2s))
+    RMSEs.append(np.mean(RMSEs))
+    recalls = np.array(recalls)
+    accuracys = np.array(accuracys)
+    R2s = np.array(R2s)
+    RMSEs = np.array(RMSEs)
+
+    print(pd.DataFrame({
+        'Recall': recalls, 'Accuracy': accuracys,
+        'R2': R2s, 'RMSE': RMSEs
+    }, index=calculate_list + ['mean']))
 
 
 def validate_model(model_name: str) -> None:
-    seed = 607
-    recalls = []
-    accuracys = []
-    threshold = 0.5
-    train_list = list(range(1, 17, 2)) + [2, 4]
+    model = train_model(model_name=model_name)
     validate_list = [8, 16]
-    model = train(
-        model_name=model_name, train_list=train_list, random_state=seed,
-
-        n_estimators=10, max_depth=3, learning_rate=0.1, n_jobs=-1,
-
-        input_size=24, hidden_size=64, output_size=1,
-        epochs=30, batch_size=30
-    )
-    print(f"{model_name} trained on {train_list} and validated on {validate_list}")
-    for i in validate_list:
-        pred = test(model, i)
-        TP, FP, TN, FN = evaluate(pred, i, threshold=threshold)
-        recalls.append(TP / (TP + FN))
-        accuracys.append((TP + TN) / (TP + FP + TN + FN))
-    recalls = np.array(recalls)
-    accuracys = np.array(accuracys)
-    print(f"Recalls: {recalls.mean()}")
-    print(f"Accuracys: {accuracys.mean()}")
-    print(pd.DataFrame({'Recall': recalls, 'Accuracy': accuracys, 'name': validate_list}))
+    print(f"{model_name} validated on {validate_list}")
+    calculate_metrics(model, validate_list)
 
 
 def test_model(model_name: str) -> None:
-    seed = 607
-    recalls = []
-    accuracys = []
-    threshold = 0.5
-    train_list = list(range(1, 17, 2)) + [2, 4]
+    model = train_model(model_name=model_name)
     test_list = [6, 10, 12, 14]
-    model = train(
-        model_name=model_name, train_list=train_list, random_state=seed,
-
-        n_estimators=10, max_depth=3, learning_rate=0.1, n_jobs=-1,
-
-        input_size=24, hidden_size=64, output_size=1,
-        epochs=30, batch_size=30
-    )
-    print(f"{model_name} trained on {train_list} and tested on {test_list}")
-    for i in test_list:
-        pred = test(model, i)
-        TP, FP, TN, FN = evaluate(pred, i, threshold=threshold)
-        recalls.append(TP / (TP + FN))
-        accuracys.append((TP + TN) / (TP + FP + TN + FN))
-    recalls = np.array(recalls)
-    accuracys = np.array(accuracys)
-    print(f"Recalls: {recalls.mean()}")
-    print(f"Accuracys: {accuracys.mean()}")
-    print(pd.DataFrame({'Recall': recalls, 'Accuracy': accuracys, 'name': test_list}))
-
+    print(f"{model_name} validated on {test_list}")
+    calculate_metrics(model, test_list)
